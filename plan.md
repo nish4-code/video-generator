@@ -110,7 +110,7 @@ def crear_video_short(imagen_path: str, audio_path: str, output_path: str = "out
         "-loop", "1", "-i", imagen_path,
         "-i", audio_path,
         "-filter_complex",
-        f"[0:v]scale=8000x-1,zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={total_frames}:s=1080x1920:fps=30[v]",
+        f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.0015,1.5)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={total_frames}:s=1080x1920:fps=30[v]",
         "-map", "[v]",
         "-map", "1:a",
         "-c:v", "libx264",
