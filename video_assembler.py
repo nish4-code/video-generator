@@ -43,6 +43,8 @@ def crear_video_short(imagen_path: str, audio_path: str, output_path: str = "out
         "-pix_fmt", "yuv420p",
         "-c:a", "aac",
         "-b:a", "192k",
+        "-ar", "44100",
+        "-ac", "2",
         "-shortest",
         output_path
     ]
