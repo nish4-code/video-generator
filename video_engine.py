@@ -4,7 +4,7 @@ from typing import List
 
 def obtener_duracion_audio(audio_path: str) -> float:
     """
-    Obtiene la duración exacta de un archivo audio con ffprobe.
+    Obtiene la duración exacta de un archivo de audio con ffprobe.
     """
     cmd = [
         "ffprobe", "-v", "error",
@@ -19,19 +19,18 @@ def ensamblar_video_multiescena(
     clips_mp4: List[str],
     audio_voz_path: str,
     subtitulos_ass_path: str,
-    avatar_png_path: str,
-    output_video_path: str = "short_v2_demo.mp4"
+    talking_avatar_mp4: str,
+    output_video_path: str = "short_v3_demo.mp4"
 ) -> str:
     """
-    Ensambla clips de video en movimiento por escena, incrusta el avatar en la esquina inferior,
-    aplica subtítulos karaoke dinámicos y exporta el video en 1080x1920 44.1kHz estéreo.
+    Ensambla escenas de fondo en movimiento, superpone el Avatar IA Parlante (Lip-Sync)
+    sincronizado y aplica los subtítulos Karaoke estilo TikTok.
     """
     duracion_audio = obtener_duracion_audio(audio_voz_path)
-    duracion_escena = duracion_audio / len(clips_mp4) if clips_mp4 else duracion_audio
 
-    print(f"[*] Ensamblando {len(clips_mp4)} escenas en movimiento (Duración: {duracion_audio:.2f}s)...")
+    print(f"[*] Ensamblando video multiescena con Avatar Lip-Sync (Duración: {duracion_audio:.2f}s)...")
 
-    # Crear lista de concat para FFmpeg
+    # Crear lista concat para clips de fondo
     concat_txt_path = "assets/clips_list.txt"
     os.makedirs(os.path.dirname(concat_txt_path), exist_ok=True)
     with open(concat_txt_path, "w") as f:
@@ -39,20 +38,22 @@ def ensamblar_video_multiescena(
             clip_abs = os.path.abspath(clip)
             f.write(f"file '{clip_abs}'\n")
 
-    # Filtro complejo para unir escenas, agregar avatar en movimiento y subtítulos karaoke
-    # avatar superpuesto abajo al centro/derecha (overlay)
+    # Filtro complejo de FFmpeg:
+    # 0: Fondo multiescena -> Escalar y recortar a 1080x1920
+    # 1: Audio de voz sintetizada NÍTIDA
+    # 2: Video del Avatar IA Parlante con Lip-Sync -> Escalar y superponer al centro inferior (x=340, y=1100)
     filter_complex = (
         f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30[bg];"
-        f"[2:v]scale=220:220[avatar];"
-        f"[bg][avatar]overlay=x=780:y=1550[video_with_avatar];"
-        f"[video_with_avatar]subtitles='{subtitulos_ass_path}'[v]"
+        f"[2:v]scale=400:400[avatar];"
+        f"[bg][avatar]overlay=x=340:y=1120[video_avatar];"
+        f"[video_avatar]subtitles='{subtitulos_ass_path}'[v]"
     )
 
     cmd = [
         "ffmpeg", "-y",
         "-f", "concat", "-safe", "0", "-i", concat_txt_path,
         "-i", audio_voz_path,
-        "-i", avatar_png_path,
+        "-i", talking_avatar_mp4,
         "-filter_complex", filter_complex,
         "-map", "[v]",
         "-map", "1:a",
@@ -68,7 +69,7 @@ def ensamblar_video_multiescena(
     ]
 
     subprocess.run(cmd, check=True)
-    print(f"[✔] Video de Alta Retención exportado en: {output_video_path}")
+    print(f"[✔] Video final v3.0 exportado exitosamente en: {output_video_path}")
     return output_video_path
 
 if __name__ == "__main__":

@@ -11,19 +11,11 @@ def generar_audio(
 ) -> str:
     """
     Sintetiza audio a partir de texto utilizando Kokoro-TTS.
-    
-    Parámetros:
-        texto (str): Texto en español a sintetizar.
-        output_path (str): Ruta donde se guardará el archivo audio WAV.
-        lang_code (str): Código de idioma ('e' para español / es).
-        voice (str): Voz deseada (ej. 'em_alex', 'em_santa', 'ef_dora').
-        
-    Retorna:
-        str: Ruta del archivo generado.
+    Garantiza la conversión de segmentos multidimensionales a un vector 1D continuo
+    para evitar distorsión o garabateo de audio.
     """
     print(f"[*] Sintetizando voz con Kokoro-TTS (Voz: {voice}, Idioma: {lang_code})...")
     
-    # Asegurar que el directorio de salida exista
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
     pipeline = KPipeline(lang_code=lang_code)
@@ -31,15 +23,23 @@ def generar_audio(
     
     audio_segments = []
     for _, _, audio in generator:
-        audio_segments.append(audio)
+        if audio is not None:
+            # Convertir PyTorch tensor a NumPy si es necesario
+            if hasattr(audio, "numpy"):
+                audio = audio.numpy()
+            # Aplanar a vector 1D de float32
+            audio_flat = np.asarray(audio, dtype=np.float32).flatten()
+            if len(audio_flat) > 0:
+                audio_segments.append(audio_flat)
         
     if not audio_segments:
         raise ValueError("No se pudo generar el audio a partir del texto proporcionado.")
         
-    final_audio = np.concatenate(audio_segments)
+    # Concatenar a lo largo del eje 0 para formar un stream mono nítido
+    final_audio = np.concatenate(audio_segments, axis=0)
     sf.write(output_path, final_audio, 24000)
     
-    print(f"[✔] Audio guardado exitosamente en: {output_path}")
+    print(f"[✔] Audio limpio NÍTIDO guardado exitosamente en: {output_path}")
     return output_path
 
 if __name__ == "__main__":
