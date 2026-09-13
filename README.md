@@ -1,18 +1,17 @@
-# Generador Automatizado de Videos Cortos (Debian Linux)
+# Generador de Videos Cortos de Alta Retención v2.0 (Debian Linux)
 
-Este proyecto permite generar automatizadamente videos verticales en formato 9:16 (1080x1920) listos para redes sociales (TikTok, YouTube Shorts, Reels), utilizando sintesis de voz natural en español (**Kokoro-TTS**) y ensamblado dinámico con animación Ken Burns mediante **FFmpeg**.
+Este sistema genera automáticamente **videos verticales (9:16 - 1080x1920)** optimizados para **TikTok, YouTube Shorts y Instagram Reels**, sustituyendo las imágenes estáticas por un pipeline de producción multimedia dinámico:
 
-El pipeline está especialmente optimizado para ejecutarse en entornos con **bajo consumo de memoria RAM (< 4 GB)**.
+1. **Multiescenas con Clips en Movimiento (`.mp4`)**: Cambios de escena cada 2 a 4 segundos.
+2. **Subtítulos Dinámicos Karaoke (Alex Hormozi / TikTok)**: Las palabras se destacan en amarillo neón exactamente al ritmo del audio.
+3. **Personaje / Avatar Animado Superpuesto**: Avatar animado colocado en la esquina inferior.
+4. **Audio Alta fidelidad**: Voces con **Kokoro-TTS** en español resampleadas a 44.1 kHz estéreo AAC.
 
 ---
 
 ## 1. Requisitos e Instalación en Debian
 
-Ejecuta los siguientes pasos en la terminal de tu sistema **Debian Linux** (Debian 11 Bullseye / Debian 12 Bookworm) o distribuciones derivadas (Ubuntu, Linux Mint, Pop!_OS):
-
-### Paso 1: Instalar Paquetes del Sistema
-Actualiza los repositorios e instala las dependencias de sistema necesarias (`ffmpeg`, soporte para archivos de audio WAV, motor `espeak-ng` y entorno virtual de Python):
-
+### Paso 1: Dependencias del Sistema
 ```bash
 sudo apt update && sudo apt install -y \
     ffmpeg \
@@ -23,72 +22,62 @@ sudo apt update && sudo apt install -y \
     espeak-ng
 ```
 
-### Paso 2: Crear y Activar el Entorno Virtual
-Ubícate en la carpeta del proyecto y crea un entorno aislado de Python:
-
+### Paso 2: Entorno Virtual e Instalación de Librerías Python
 ```bash
-# Crear entorno virtual
 python3 -m venv venv
-
-# Activar entorno virtual
 source venv/bin/activate
-```
 
-### Paso 3: Instalar Dependencias de Python
-Con el entorno virtual activado, instala las librerías necesarias ejecutando:
-
-```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
 ---
 
-## 2. Estructura del Proyecto
+## 2. Configuración Opcional (Clips de Stock HD)
+
+Si deseas descargar automáticamente clips de video HD reales según las palabras del guion, puedes utilizar la API gratuita de Pexels:
+
+1. Consigue una API Key gratuita en [pexels.com/api](https://www.pexels.com/api/).
+2. Exporta tu clave en la terminal antes de ejecutar:
+
+```bash
+export PEXELS_API_KEY="tu_clave_de_pexels_aqui"
+```
+
+*Nota: Si no defines una API Key, el sistema genera automáticamente clips de video procedimentales animados en movimiento sin fallar.*
+
+---
+
+## 3. Estructura del Proyecto v2.0
 
 ```text
 video_generator/
-├── requirements.txt         # Lista de dependencias Python (kokoro, soundfile, pillow, numpy)
-├── voice_generator.py       # Síntesis de voz con Kokoro-TTS (Español)
-├── video_assembler.py       # Renderizado de video vertical 9:16 con FFmpeg
-├── main.py                  # Orquestador del pipeline completo
-├── README.md                # Guía de instalación y uso en Debian
-└── assets/                  # Carpeta de recursos generados (imágenes, audio speech.wav)
+├── requirements.txt         # Librerías necesarias (kokoro, soundfile, requests, pillow)
+├── script_parser.py         # Divide el guion en escenas cortas con palabras clave
+├── stock_fetcher.py         # Descarga o genera clips MP4 en movimiento por escena
+├── subtitles_generator.py   # Genera subtítulos Karaoke .ASS animados estilo Alex Hormozi
+├── avatar_overlay.py        # Genera/Carga el personaje animado superpuesto
+├── video_engine.py          # Ensambla clips, avatar, audio 44.1kHz estéreo y subtítulos
+├── voice_generator.py       # Síntesis de voz en español con Kokoro-TTS
+├── main.py                  # Orquestador del pipeline v2.0
+└── assets/                  # Guardado de clips, avatar, audio speech.wav y subtítulos
 ```
 
 ---
 
-## 3. Ejecución y Prueba
+## 4. Ejecución
 
-Para ejecutar el pipeline completo de prueba:
+Con el entorno virtual activado (`source venv/bin/activate`):
 
 ```bash
-# Asegúrate de tener el entorno virtual activado (source venv/bin/activate)
 python3 main.py
 ```
 
-### ¿Qué hace `main.py`?
-1. Crea automáticamente una imagen vertical de muestra (`assets/sample_image.jpg`) si no existe ninguna.
-2. Genera la voz sintética a partir de un texto de muestra en español usando Kokoro-TTS y la guarda en `assets/speech.wav`.
-3. Calcula la duración del audio y genera el archivo final `short_demo.mp4` aplicando un efecto visual de zoom continuo (Ken Burns) sin sobrecargar la RAM.
+El resultado final se guardará en **`short_v2_demo.mp4`**.
 
 ---
 
-## 4. Personalización
+## 5. Personalizar el Personaje
 
-* **Cambiar el Guion**: Edita la variable `guion` dentro de `main.py` o importa `generar_audio()` en tus propios scripts.
-* **Usar tu propia imagen de fondo**: Coloca tu imagen vertical (1080x1920 en formato `.jpg` o `.png`) en `assets/sample_image.jpg` antes de ejecutar el programa.
-* **Cambiar la voz de síntesis**: En `voice_generator.py` puedes ajustar el parámetro `voice` por cualquier voz compatible con Kokoro en español (ejemplo: `em_alex`, `em_santa`, `ef_dora`).
-
----
-
-## 5. Solución de Problemas Comunes en Debian
-
-* **Error `OSError: sndfile library not found`**:
-  Ocurre si falta la librería `libsndfile1` en Debian. Instálala ejecutando: `sudo apt install libsndfile1`.
-
-* **Error `ffmpeg: command not found`**:
-  Asegúrate de haber instalado FFmpeg: `sudo apt install ffmpeg`.
-
-* **Permisos del entorno virtual**:
-  Si `python3 -m venv venv` falla, asegúrate de instalar `python3-venv`: `sudo apt install python3-venv`.
+Si deseas usar tu propia caricatura o personaje:
+Coloca una imagen con fondo transparente PNG (400x400 px) en **`assets/avatar/character.png`** antes de ejecutar `main.py`. El sistema la utilizará automáticamente como el personaje animado del video.
