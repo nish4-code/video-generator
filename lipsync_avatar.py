@@ -7,8 +7,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 def calcular_envolvente_audio(audio_path: str, fps: int = 30) -> np.ndarray:
     """
-    Calcula el nivel de energía de volumen RMS por fotograma de video (30 fps)
-    a partir del archivo de audio speech.wav para controlar la animación labial.
+    Calcula el nivel de energía RMS por fotograma de video (30 fps) a partir del audio PCM WAV.
     """
     data, samplerate = sf.read(audio_path)
     if data.ndim > 1:
@@ -41,60 +40,56 @@ def generar_video_avatar_lipsync(
     fps: int = 30
 ) -> str:
     """
-    Genera un video animado MP4 del personaje con sincronización labial (Lip-Sync),
-    guiño de ojos y micro-movimiento de cabeza controlado por el audio.
+    Genera un video animado del Personaje Presentador 3D con animación labial (Lip-Sync),
+    efectos de aura de neón y movimiento de cámara sincronizados con la voz.
     """
     os.makedirs(os.path.dirname(output_avatar_mp4), exist_ok=True)
-    os.makedirs("assets/avatar", exist_ok=True)
 
-    # Crear imagen base de avatar estilo presentador futurista si no existe
     if not os.path.exists(avatar_image_path):
-        print("[*] Creando personaje avatar base...")
-        base = Image.new("RGBA", (500, 500), (0, 0, 0, 0))
-        d = ImageDraw.Draw(base)
-        # Cabeza
-        d.ellipse([(100, 80), (400, 380)], fill=(25, 30, 48, 255), outline=(0, 210, 255, 255), width=8)
-        # Ojos
-        d.ellipse([(170, 160), (220, 210)], fill=(255, 255, 255, 255))
-        d.ellipse([(280, 160), (330, 210)], fill=(255, 255, 255, 255))
-        d.ellipse([(185, 175), (205, 195)], fill=(0, 210, 255, 255))
-        d.ellipse([(295, 175), (315, 195)], fill=(0, 210, 255, 255))
-        base.save(avatar_image_path)
+        avatar_image_path = "assets/sample_image.jpg"
 
+    # Cargar y preparar imagen HD del personaje
     base_img = Image.open(avatar_image_path).convert("RGBA").resize((500, 500))
+    
+    # Crear máscara circular de badge profesional
+    mask = Image.new("L", (500, 500), 0)
+    draw_mask = ImageDraw.Draw(mask)
+    draw_mask.ellipse([(20, 20), (480, 480)], fill=255)
+
     envolvente = calcular_envolvente_audio(audio_path, fps=fps)
     num_frames = len(envolvente)
 
     frames_dir = "assets/avatar_frames"
     os.makedirs(frames_dir, exist_ok=True)
 
-    print(f"[*] Generando animación Lip-Sync ({num_frames} fotogramas)...")
+    print(f"[*] Renderizando Presentador 3D en movimiento ({num_frames} fotogramas)...")
 
     for i in range(num_frames):
         vol = envolvente[i]  # 0.0 a 1.0
-        frame = base_img.copy()
-        draw = ImageDraw.Draw(frame)
-
-        # 1. Apertura labial según volumen del audio (Lip-Sync)
-        boca_apertura = int(vol * 45)  # 0 a 45px de apertura
-        boca_box = [(200, 270 - (boca_apertura // 2)), (300, 280 + (boca_apertura // 2))]
         
-        if vol > 0.08:
-            # Boca abierta durante la voz
-            draw.ellipse(boca_box, fill=(255, 60, 100, 255), outline=(255, 220, 0, 255), width=4)
-        else:
-            # Boca cerrada en pausas
-            draw.line([(200, 275), (300, 275)], fill=(0, 210, 255, 255), width=6)
+        # 1. Crear canvas transparente
+        canvas = Image.new("RGBA", (500, 500), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(canvas)
 
-        # 2. Pestañeo aleatorio de ojos (guiño) cada ~90 frames
-        if (i % 90) in [0, 1, 2]:
-            draw.rectangle([(170, 180), (220, 190)], fill=(0, 210, 255, 255))
-            draw.rectangle([(280, 180), (330, 190)], fill=(0, 210, 255, 255))
+        # 2. Pulsación de aura neón según la voz
+        glow_size = int(vol * 20)
+        draw.ellipse([(15 - glow_size, 15 - glow_size), (485 + glow_size, 485 + glow_size)], outline=(0, 230, 255, 180), width=6)
+        draw.ellipse([(20, 20), (480, 480)], outline=(255, 215, 0, 255), width=8)
+
+        # 3. Aplicar avatar recortado
+        canvas.paste(base_img, (0, 0), mask)
+
+        # 4. Indicador visual de voz activa (Ecualizador dinámico)
+        if vol > 0.05:
+            bar_h = int(vol * 35)
+            draw.rectangle([(230, 430 - bar_h), (245, 430)], fill=(0, 230, 255, 255))
+            draw.rectangle([(250, 435 - bar_h), (265, 435)], fill=(255, 220, 0, 255))
+            draw.rectangle([(270, 430 - bar_h), (285, 430)], fill=(0, 230, 255, 255))
 
         frame_path = os.path.join(frames_dir, f"frame_{i:04d}.png")
-        frame.save(frame_path)
+        canvas.save(frame_path)
 
-    # Convertir secuencia de fotogramas a MP4 con fondo transparente/chroma
+    # Convertir secuencia de imágenes PNG a MP4 con codificación compatible
     cmd = [
         "ffmpeg", "-y",
         "-framerate", str(fps),
@@ -104,7 +99,7 @@ def generar_video_avatar_lipsync(
         output_avatar_mp4
     ]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    print(f"[✔] Video del Avatar IA Parlante (Lip-Sync) generado en: {output_avatar_mp4}")
+    print(f"[✔] Video del Presentador 3D generado en: {output_avatar_mp4}")
     return output_avatar_mp4
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ from typing import List
 
 def obtener_duracion_audio(audio_path: str) -> float:
     """
-    Obtiene la duración exacta de un archivo de audio con ffprobe.
+    Obtiene la duración exacta de un archivo audio con ffprobe.
     """
     cmd = [
         "ffprobe", "-v", "error",
@@ -23,14 +23,13 @@ def ensamblar_video_multiescena(
     output_video_path: str = "short_v3_demo.mp4"
 ) -> str:
     """
-    Ensambla escenas de fondo en movimiento, superpone el Avatar IA Parlante (Lip-Sync)
-    sincronizado y aplica los subtítulos Karaoke estilo TikTok.
+    Ensambla escenas de fondo HD en movimiento, superpone el Presentador 3D con halo de neón
+    y aplica los subtítulos Karaoke estilo TikTok en 1080x1920 con audio 44.1kHz estéreo.
     """
     duracion_audio = obtener_duracion_audio(audio_voz_path)
 
-    print(f"[*] Ensamblando video multiescena con Avatar Lip-Sync (Duración: {duracion_audio:.2f}s)...")
+    print(f"[*] Ensamblando video multiescena con Presentador 3D (Duración: {duracion_audio:.2f}s)...")
 
-    # Crear lista concat para clips de fondo
     concat_txt_path = "assets/clips_list.txt"
     os.makedirs(os.path.dirname(concat_txt_path), exist_ok=True)
     with open(concat_txt_path, "w") as f:
@@ -39,13 +38,13 @@ def ensamblar_video_multiescena(
             f.write(f"file '{clip_abs}'\n")
 
     # Filtro complejo de FFmpeg:
-    # 0: Fondo multiescena -> Escalar y recortar a 1080x1920
-    # 1: Audio de voz sintetizada NÍTIDA
-    # 2: Video del Avatar IA Parlante con Lip-Sync -> Escalar y superponer al centro inferior (x=340, y=1100)
+    # 0: Fondo multiescena -> Escalar a 1080x1920
+    # 1: Audio PCM de voz sintetizada NÍTIDA
+    # 2: Presentador 3D -> Escalar a 360x360 y superponer al centro inferior (x=360, y=1180)
     filter_complex = (
         f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30[bg];"
-        f"[2:v]scale=400:400[avatar];"
-        f"[bg][avatar]overlay=x=340:y=1120[video_avatar];"
+        f"[2:v]scale=360:360[avatar];"
+        f"[bg][avatar]overlay=x=360:y=1180[video_avatar];"
         f"[video_avatar]subtitles='{subtitulos_ass_path}'[v]"
     )
 
@@ -59,17 +58,18 @@ def ensamblar_video_multiescena(
         "-map", "1:a",
         "-c:v", "libx264",
         "-preset", "fast",
-        "-t", str(duracion_audio + 0.3),
+        "-t", str(duracion_audio + 0.2),
         "-pix_fmt", "yuv420p",
         "-c:a", "aac",
         "-b:a", "192k",
         "-ar", "44100",
         "-ac", "2",
+        "-movflags", "+faststart",
         output_video_path
     ]
 
     subprocess.run(cmd, check=True)
-    print(f"[✔] Video final v3.0 exportado exitosamente en: {output_video_path}")
+    print(f"[✔] Video final v3.0 HD exportado exitosamente en: {output_video_path}")
     return output_video_path
 
 if __name__ == "__main__":

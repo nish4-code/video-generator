@@ -11,8 +11,8 @@ def generar_audio(
 ) -> str:
     """
     Sintetiza audio a partir de texto utilizando Kokoro-TTS.
-    Garantiza la conversión de segmentos multidimensionales a un vector 1D continuo
-    para evitar distorsión o garabateo de audio.
+    Normaliza la amplitud y exporta en formato estándar PCM 16-bit WAV (24000 Hz)
+    para garantar reproducción cristalina en todos los reproductores de Linux.
     """
     print(f"[*] Sintetizando voz con Kokoro-TTS (Voz: {voice}, Idioma: {lang_code})...")
     
@@ -24,10 +24,8 @@ def generar_audio(
     audio_segments = []
     for _, _, audio in generator:
         if audio is not None:
-            # Convertir PyTorch tensor a NumPy si es necesario
             if hasattr(audio, "numpy"):
                 audio = audio.numpy()
-            # Aplanar a vector 1D de float32
             audio_flat = np.asarray(audio, dtype=np.float32).flatten()
             if len(audio_flat) > 0:
                 audio_segments.append(audio_flat)
@@ -35,16 +33,19 @@ def generar_audio(
     if not audio_segments:
         raise ValueError("No se pudo generar el audio a partir del texto proporcionado.")
         
-    # Concatenar a lo largo del eje 0 para formar un stream mono nítido
     final_audio = np.concatenate(audio_segments, axis=0)
-    sf.write(output_path, final_audio, 24000)
+
+    # 1. Normalizar amplitud al 95% de nivel máximo para evitar saturación o distorsión
+    max_amp = np.max(np.abs(final_audio))
+    if max_amp > 0:
+        final_audio = (final_audio / max_amp) * 0.95
+
+    # 2. Exportar explícitamente como PCM_16 bit WAV (compatibilidad 100% en Linux/Debian/Totem/VLC)
+    sf.write(output_path, final_audio, 24000, subtype='PCM_16')
     
-    print(f"[✔] Audio limpio NÍTIDO guardado exitosamente en: {output_path}")
+    print(f"[✔] Audio PCM-16 cristalino generado exitosamente en: {output_path}")
     return output_path
 
 if __name__ == "__main__":
-    texto_prueba = (
-        "¿Sabías que el primer procesador comercial de la historia, el Intel 4004, "
-        "tenía una velocidad de reloj de apenas 740 kilohercios? Hoy, tu teléfono es millones de veces más rápido."
-    )
+    texto_prueba = "Prueba de audio nítido en formato PCM 16 bits."
     generar_audio(texto_prueba)
